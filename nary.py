@@ -29,7 +29,7 @@ class NaryFunc:
         return gradient
         
     def hessian(self, x: Vector, ε: float = SYSTEM_EPS) -> Vector:
-        self.g_count += 1
+        self.h_count += 1
         size = len(x)
         hessian = np.zeros((size, size))
         
