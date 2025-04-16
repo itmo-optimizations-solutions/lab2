@@ -4,6 +4,7 @@ from typing import Callable
 Vector = np.ndarray
 SYSTEM_EPS = np.sqrt(np.finfo(float).eps)
 
+
 class NaryFunc:
     Type = Callable[[list[Vector]], float]
     func: Type
@@ -17,37 +18,34 @@ class NaryFunc:
     def __call__(self, x: Vector) -> float:
         return self.func(*x)
 
+    def partial_derivative(
+        self, i: int, size: int, ε: float = SYSTEM_EPS
+    ) -> "NaryFunc":
+        dx = np.zeros(size)
+        h = max(ε, SYSTEM_EPS)
+        dx[i] = h
+        return NaryFunc(lambda x: (self(x + dx) - self(x - dx)) / (2 * h))
+
     def gradient(self, x: Vector, ε: float = SYSTEM_EPS) -> Vector:
         self.g_count += 1
         gradient = np.zeros_like(x)
         size = len(x)
         for i in range(size):
-            dx = np.zeros(size)
-            h = max(ε, ε * abs(x[i]))
-            dx[i] = h
-            gradient[i] = (self(x + dx) - self(x - dx)) / (2 * h)
+            gradient[i] = self.partial_derivative(i, size, ε)(x)
         return gradient
-        
+
     def hessian(self, x: Vector, ε: float = SYSTEM_EPS) -> Vector:
         self.h_count += 1
         size = len(x)
         hessian = np.zeros((size, size))
-        
+
         for i in range(size):
+            df_i = self.partial_derivative(i, size, ε)
             for j in range(size):
-                dx = np.zeros(size)
-                dy = np.zeros(size) 
-                
-                hx = max(ε, ε * abs(x[i]))
-                hy = max(ε, ε * abs(x[j]))
-                
-                dx[i] = hx
-                dy[j] = hy
-                
-                hessian[i,j] = (self(x + dx + dy) - self(x + dx - dy) -
-                                self(x - dx + dy) + self(x - dx - dy)) / (4 * hx * hy)
-                
+                hessian[i, j] = df_i.partial_derivative(j, size, ε)(x)
+
         return hessian
+
 
 Scheduling = Callable[[int], float]
 Rule = Callable[[NaryFunc, Vector, Vector], float]
