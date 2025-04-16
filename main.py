@@ -229,8 +229,8 @@ INTERESTING = [
 # lambda x, y: x ** 3 + x ** 2 + y ** 3 + y ** 2, (-2/3, -2/3)
 
 if __name__ == "__main__":
-    func = NaryFunc(lambda x: np.cos(x))
-    start = np.array([0.1])
+    func = NaryFunc(lambda x, y: -1.0 / (1.0 + (x - 1.0)**2 + (y - 1.0)**2))
+    start = np.array([0.0, 0.0])
     print(example_table(func, start))
     x, _, _, trajectory = newton_descent(
         func, start, wolfe_rule_gen(α=0.5, c1=1e-4, c2=0.3)
