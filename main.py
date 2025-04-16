@@ -31,7 +31,6 @@ def gradient_descent(
         x += direction
 
         trajectory.append(x.copy())
-
         k += 1
         if np.linalg.norm(gradient) ** 2 < ε or k > limit:
             break
