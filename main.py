@@ -26,25 +26,18 @@ def gradient_descent(
     while True:
         gradient = func.gradient(x)
 
-        eps_array = np.full_like(gradient, ε ** 0.5)
-        max_state = False
-        if np.allclose(gradient, 0) and func(x + eps_array) < func(x):
-            x += eps_array
-            max_state = True
+        hessian = func.hessian(x)
+        direction = -np.linalg.solve(hessian, gradient)
+        x += direction
 
-        u = -gradient
-        α = learning(k) if is_scheduling(learning) else learning(func, x, u)
-        α = error if α is None else α  # @Nullable
-
-        x += α * u
         trajectory.append(x.copy())
 
         k += 1
-        if not max_state and np.linalg.norm(gradient) ** 2 < ε or k > limit:
+        if np.linalg.norm(gradient) ** 2 < ε or k > limit:
             break
 
-    grad_count = func.count
-    func.count = 0
+    grad_count = func.g_count
+    func.g_count = 0
     return x, grad_count, k, trajectory
 
 # === Learnings
@@ -190,8 +183,8 @@ INTERESTING = \
 # lambda x, y: x ** 3 + x ** 2 + y ** 3 + y ** 2, (-2/3, -2/3)
 
 if __name__ == "__main__":
-    func = NaryFunc(quadratic)
-    start = np.array([-3.0, 5.0])
+    func = NaryFunc(lambda x : np.sin(x))
+    start = np.array([0.0])
     print(example_table(func, start))
     x, _, _, trajectory = gradient_descent(func, start, wolfe_rule_gen(α=0.5, c1=1e-4, c2=0.3))
     plot_gradient(func, len(start) == 1, len(start) == 2, trajectory, name="Quadratic Function")
