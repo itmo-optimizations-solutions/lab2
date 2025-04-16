@@ -14,13 +14,14 @@ class NaryFunc:
     def __init__(self, func: Type) -> None:
         self.func = func
         self.g_count = 0
+        self.h_count = 0
 
     def __call__(self, x: Vector) -> float:
         return self.func(*x)
 
     def partial_derivative(
         self, i: int, size: int, ε: float = SYSTEM_EPS
-    ) -> "NaryFunc":
+    ) -> 'NaryFunc':
         dx = np.zeros(size)
         h = max(ε, SYSTEM_EPS)
         dx[i] = h

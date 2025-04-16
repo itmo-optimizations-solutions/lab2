@@ -13,12 +13,15 @@ def is_scheduling(algorithm) -> bool:
     return hasattr(algorithm, "__code__") and algorithm.__code__.co_argcount == 1
 
 
-def gradient_descent(
+def newton_descent(
     func: NaryFunc,
     start: Vector,
     learning: Learning,
     limit: float = 1e3,
     ε: float = 1e-6,
+    c: float = 1e-4,  # параметр Армихо
+    τ: float = 0.5,  # редукция шага
+    μ: float = 1e-6,  # простая регуляризация diag(H)+μI
     error: float = 0.1,
 ) -> Tuple[Vector, int, int, list]:
     x = start.copy()
@@ -27,10 +30,23 @@ def gradient_descent(
 
     while True:
         gradient = func.gradient(x)
-
         hessian = func.hessian(x)
-        direction = -np.linalg.solve(hessian, gradient)
-        x += direction
+        try:
+            d = -np.linalg.solve(hessian, gradient)
+        except np.linalg.LinAlgError:
+            d = -gradient
+
+        if np.dot(gradient, d) >= 0:
+            d = -gradient
+
+        # backtracking line search (Армихо)
+        α = 1.0
+        f0 = func(x)
+        while func(x + α * d) > f0 + c * α * np.dot(gradient, d):
+            α *= τ
+
+        # шаг
+        x = x + α * d
 
         trajectory.append(x.copy())
         k += 1
@@ -137,7 +153,7 @@ class Algorithm:
     algorithm: Learning
 
     def get_data(self, func: NaryFunc, start: Vector) -> list:
-        x, grad_count, k, _ = gradient_descent(func, start, self.algorithm)
+        x, grad_count, k, _ = newton_descent(func, start, self.algorithm)
         return [self.name] + [self.meta] + list(x) + [grad_count] + [k]
 
 
@@ -213,10 +229,10 @@ INTERESTING = [
 # lambda x, y: x ** 3 + x ** 2 + y ** 3 + y ** 2, (-2/3, -2/3)
 
 if __name__ == "__main__":
-    func = NaryFunc(lambda x: np.sin(x))
-    start = np.array([0.0])
+    func = NaryFunc(lambda x: np.cos(x))
+    start = np.array([0.1])
     print(example_table(func, start))
-    x, _, _, trajectory = gradient_descent(
+    x, _, _, trajectory = newton_descent(
         func, start, wolfe_rule_gen(α=0.5, c1=1e-4, c2=0.3)
     )
     plot_gradient(
