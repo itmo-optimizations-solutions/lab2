@@ -37,14 +37,11 @@ def newton_descent(
         if np.dot(gradient, d) >= 0:
             d = -gradient
 
-        # backtracking line search (Армихо)
-        α = 1.0
-        f0 = func(x)
-        while func(x + α * d) > f0 + c * α * np.dot(gradient, d):
-            α *= τ
+        α = learning(k) if is_scheduling(learning) else learning(func, x, d)
+        α = error if α is None else α  # @Nullable
 
         # шаг
-        x = x + α * d
+        x += α * d
 
         trajectory.append(x.copy())
         k += 1
@@ -127,6 +124,40 @@ def scipy_armijo(func: NaryFunc, x: Vector, direction: Vector) -> float:
         alpha0=0.5,
     )[0]
 
+def dichotomy_gen(a: float, b: float, eps: float = 1e-6) -> Rule:
+    return lambda func, x, direction: dichotomy(func, x, direction, a=a ,b=b, eps=eps)
+
+
+def dichotomy(
+    func: 'NaryFunc',
+    x: np.ndarray,
+    direction: np.ndarray,
+    a: float,
+    b: float,
+    eps: float
+) -> float:
+    def phi(alpha: float) -> float:
+        return func(x + alpha * direction)
+
+
+    while (b - a) > eps:
+        c = (a + b) / 2
+        f_c = phi(c)
+
+        a1 = (a + c) / 2.0
+        f_a1 = phi(a1)
+        b1 = (c + b) / 2.0
+        f_b1 = phi(b1)
+
+        if f_a1 < f_c:
+            b = c
+        elif f_c > f_b1:
+            a = c
+        else:
+            a, b = a1, b1
+
+    return (a + b) / 2.0
+
 # === Launcher
 
 @dataclass
@@ -150,6 +181,7 @@ KNOWN = [
     ),
     Algorithm("SciPy Armijo", "!", scipy_armijo),
     Algorithm("SciPy Wolfe", "!", scipy_wolfe),
+    Algorithm("Dichotomy", "a=0.0, b1.0, c=0.5", dichotomy_gen(a=0.0, b=1.0)),
 ]
 
 def example_table(func: NaryFunc, start: Vector) -> PrettyTable:
@@ -202,11 +234,11 @@ INTERESTING = [
 # lambda x, y: x ** 3 + x ** 2 + y ** 3 + y ** 2, (-2/3, -2/3)
 
 if __name__ == "__main__":
-    func = NaryFunc(lambda x, y: -1.0 / (1.0 + (x - 1.0) ** 2 + (y - 1.0) ** 2))
-    start = np.array([0.0, 0.0])
+    func = NaryFunc(rosenbrock)
+    start = np.array([3.0, 3.0])
     print(example_table(func, start))
     x, _, _, trajectory = newton_descent(
-        func, start, wolfe_rule_gen(α=0.5, c1=1e-4, c2=0.3)
+        func, start, dichotomy_gen(a=0.0, b=1.0)
     )
     plot_gradient(
         func, len(start) == 1, len(start) == 2, trajectory, name="Quadratic Function"
