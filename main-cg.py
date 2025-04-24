@@ -3,7 +3,7 @@ import scipy.optimize._linesearch as sc
 from dataclasses import dataclass
 from prettytable import PrettyTable
 
-from nary import *
+from newton import *
 from plot import *
 
 np.seterr(over="ignore", invalid="ignore")
@@ -80,7 +80,7 @@ def armijo_rule(
     c: float,
 ) -> float | None:
     for _ in range(MAX_ITER_RULE):
-        if func(x + α * direction) <= func(x) + c * α * np.linalg.norm(direction):
+        if func(x + α * direction) <= func(x) + c * α * np.dot(-direction, direction):
             return α
         α *= q
     return None
@@ -94,13 +94,9 @@ def wolfe_rule(
     c2: float,
 ) -> float | None:
     for _ in range(MAX_ITER_RULE):
-        if func(x + α * direction) > func(x) + c1 * α * np.dot(
-            func.gradient(x), direction
-        ):
+        if func(x + α * direction) > func(x) + c1 * α * np.dot(-direction, direction):
             α *= 0.5
-        elif np.dot(func.gradient(x + α * direction), direction) < c2 * np.dot(
-            func.gradient(x), direction
-        ):
+        elif np.dot(func.gradient(x + α * direction), direction) < c2 * np.dot(-direction, direction):
             α *= 1.5
         else:
             return α
@@ -125,11 +121,10 @@ def scipy_armijo(func: NaryFunc, x: Vector, direction: Vector) -> float:
     )[0]
 
 def dichotomy_gen(a: float, b: float, eps: float = 1e-6) -> Rule:
-    return lambda func, x, direction: dichotomy(func, x, direction, a=a ,b=b, eps=eps)
-
+    return lambda func, x, direction: dichotomy(func, x, direction, a=a, b=b, eps=eps)
 
 def dichotomy(
-    func: 'NaryFunc',
+    func: NaryFunc,
     x: np.ndarray,
     direction: np.ndarray,
     a: float,
@@ -138,7 +133,6 @@ def dichotomy(
 ) -> float:
     def phi(alpha: float) -> float:
         return func(x + alpha * direction)
-
 
     while (b - a) > eps:
         c = (a + b) / 2
@@ -170,18 +164,28 @@ class Algorithm:
         x, grad_count, k, _ = newton_descent(func, start, self.algorithm)
         return [self.name] + [self.meta] + list(x) + [grad_count] + [k]
 
+@dataclass
+class SciAlgorithm:
+    name: str
+    meta: str
+    evaluator: Callable[[NaryFunc, Vector], Tuple[Vector, int, int]]
+
+    def get_data(self, func: NaryFunc, start: Vector) -> list:
+        x, grad_count, k = self.evaluator(func, start)
+        return [self.name] + [self.meta] + list(x) + [grad_count] + [k]
+
 KNOWN = [
     Algorithm("Constant", "λ=0.3", constant(λ=0.3)),
     Algorithm("Constant", "λ=0.003", constant(λ=0.003)),
     Algorithm("Exponential Decay", "λ=0.01", exponential_decay(λ=0.01)),
     Algorithm("Polynomial Decay", "α=0.5, β=1", polynomial_decay(α=0.5, β=1)),
     Algorithm("Armijo", "α=0.9, q=0.5, c=0.5", armijo_rule_gen(α=0.9, q=0.5, c=0.5)),
-    Algorithm(
-        "Wolfe Rule", "α=0.5, c1=1e-4, c2=0.3", wolfe_rule_gen(α=0.5, c1=1e-4, c2=0.3)
-    ),
+    Algorithm("Wolfe Rule", "α=0.5, c1=1e-4, c2=0.3", wolfe_rule_gen(α=0.5, c1=1e-4, c2=0.3)),
     Algorithm("SciPy Armijo", "!", scipy_armijo),
     Algorithm("SciPy Wolfe", "!", scipy_wolfe),
-    Algorithm("Dichotomy", "a=0.0, b1.0, c=0.5", dichotomy_gen(a=0.0, b=1.0)),
+    Algorithm("Dichotomy", "a=0.0, b=1.0, c=0.5", dichotomy_gen(a=0.0, b=1.0)),
+    SciAlgorithm("SciPy Newton-CG", "!", lambda f, x: newton_cg(f, x)),
+    SciAlgorithm("SciPy BFGS", "!", lambda f, x: bfgs(f, x)),
 ]
 
 def example_table(func: NaryFunc, start: Vector) -> PrettyTable:
@@ -216,13 +220,19 @@ def himmelblau(x: float, y: float) -> float:
 def noise(x: float, y: float, amplitude: float = 0.1) -> float:
     return amplitude * (np.sin(10 * x + 20 * y) + np.cos(15 * x - 10 * y)) / 2
 
+def random_noise(x: float, y: float, amplitude: float = 0.1) -> float:
+    return amplitude * np.random.randn()
+
 def noisy_function(
-    x: float, y: float, amplitude: float, function: Callable[[float, float], float]
+    x: float,
+    y: float,
+    amplitude: float,
+    function: Callable[[float, float], float]
 ) -> float:
-    return function(x, y) + noise(x, y, amplitude)
+    return function(x, y) + random_noise(x, y, amplitude)
 
 def noisy_wrapper(x: float, y: float) -> float:
-    return noisy_function(x, y, amplitude=0.1, function=rosenbrock)
+    return noisy_function(x, y, amplitude=0.001, function=quadratic)
 
 INTERESTING = [
     [spherical, [-3.0, 2.0], "Quadratic function: 100 - np.sqrt(100 - x^2 - y^2)"],
