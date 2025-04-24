@@ -80,7 +80,7 @@ def armijo_rule(
     c: float,
 ) -> float | None:
     for _ in range(MAX_ITER_RULE):
-        if func(x + α * direction) <= func(x) + c * α * np.linalg.norm(direction):
+        if func(x + α * direction) <= func(x) + c * α * np.dot(-direction, direction):
             return α
         α *= q
     return None
@@ -94,13 +94,9 @@ def wolfe_rule(
     c2: float,
 ) -> float | None:
     for _ in range(MAX_ITER_RULE):
-        if func(x + α * direction) > func(x) + c1 * α * np.dot(
-            func.gradient(x), direction
-        ):
+        if func(x + α * direction) > func(x) + c1 * α * np.dot(-direction, direction):
             α *= 0.5
-        elif np.dot(func.gradient(x + α * direction), direction) < c2 * np.dot(
-            func.gradient(x), direction
-        ):
+        elif np.dot(func.gradient(x + α * direction), direction) < c2 * np.dot(-direction, direction):
             α *= 1.5
         else:
             return α
@@ -224,13 +220,19 @@ def himmelblau(x: float, y: float) -> float:
 def noise(x: float, y: float, amplitude: float = 0.1) -> float:
     return amplitude * (np.sin(10 * x + 20 * y) + np.cos(15 * x - 10 * y)) / 2
 
+def random_noise(x: float, y: float, amplitude: float = 0.1) -> float:
+    return amplitude * np.random.randn()
+
 def noisy_function(
-    x: float, y: float, amplitude: float, function: Callable[[float, float], float]
+    x: float,
+    y: float,
+    amplitude: float,
+    function: Callable[[float, float], float]
 ) -> float:
-    return function(x, y) + noise(x, y, amplitude)
+    return function(x, y) + random_noise(x, y, amplitude)
 
 def noisy_wrapper(x: float, y: float) -> float:
-    return noisy_function(x, y, amplitude=0.1, function=rosenbrock)
+    return noisy_function(x, y, amplitude=0.001, function=quadratic)
 
 INTERESTING = [
     [spherical, [-3.0, 2.0], "Quadratic function: 100 - np.sqrt(100 - x^2 - y^2)"],
