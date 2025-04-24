@@ -3,7 +3,7 @@ import scipy.optimize._linesearch as sc
 from dataclasses import dataclass
 from prettytable import PrettyTable
 
-from nary import *
+from newton import *
 from plot import *
 
 np.seterr(over="ignore", invalid="ignore")
@@ -125,11 +125,10 @@ def scipy_armijo(func: NaryFunc, x: Vector, direction: Vector) -> float:
     )[0]
 
 def dichotomy_gen(a: float, b: float, eps: float = 1e-6) -> Rule:
-    return lambda func, x, direction: dichotomy(func, x, direction, a=a ,b=b, eps=eps)
-
+    return lambda func, x, direction: dichotomy(func, x, direction, a=a, b=b, eps=eps)
 
 def dichotomy(
-    func: 'NaryFunc',
+    func: NaryFunc,
     x: np.ndarray,
     direction: np.ndarray,
     a: float,
@@ -138,7 +137,6 @@ def dichotomy(
 ) -> float:
     def phi(alpha: float) -> float:
         return func(x + alpha * direction)
-
 
     while (b - a) > eps:
         c = (a + b) / 2
@@ -170,18 +168,28 @@ class Algorithm:
         x, grad_count, k, _ = newton_descent(func, start, self.algorithm)
         return [self.name] + [self.meta] + list(x) + [grad_count] + [k]
 
+@dataclass
+class SciAlgorithm:
+    name: str
+    meta: str
+    evaluator: Callable[[NaryFunc, Vector], Tuple[Vector, int, int]]
+
+    def get_data(self, func: NaryFunc, start: Vector) -> list:
+        x, grad_count, k = self.evaluator(func, start)
+        return [self.name] + [self.meta] + list(x) + [grad_count] + [k]
+
 KNOWN = [
     Algorithm("Constant", "λ=0.3", constant(λ=0.3)),
     Algorithm("Constant", "λ=0.003", constant(λ=0.003)),
     Algorithm("Exponential Decay", "λ=0.01", exponential_decay(λ=0.01)),
     Algorithm("Polynomial Decay", "α=0.5, β=1", polynomial_decay(α=0.5, β=1)),
     Algorithm("Armijo", "α=0.9, q=0.5, c=0.5", armijo_rule_gen(α=0.9, q=0.5, c=0.5)),
-    Algorithm(
-        "Wolfe Rule", "α=0.5, c1=1e-4, c2=0.3", wolfe_rule_gen(α=0.5, c1=1e-4, c2=0.3)
-    ),
+    Algorithm("Wolfe Rule", "α=0.5, c1=1e-4, c2=0.3", wolfe_rule_gen(α=0.5, c1=1e-4, c2=0.3)),
     Algorithm("SciPy Armijo", "!", scipy_armijo),
     Algorithm("SciPy Wolfe", "!", scipy_wolfe),
-    Algorithm("Dichotomy", "a=0.0, b1.0, c=0.5", dichotomy_gen(a=0.0, b=1.0)),
+    Algorithm("Dichotomy", "a=0.0, b=1.0, c=0.5", dichotomy_gen(a=0.0, b=1.0)),
+    SciAlgorithm("SciPy Newton-CG", "!", lambda f, x: newton_cg(f, x)),
+    SciAlgorithm("SciPy BFGS", "!", lambda f, x: bfgs(f, x)),
 ]
 
 def example_table(func: NaryFunc, start: Vector) -> PrettyTable:
