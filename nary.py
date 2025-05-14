@@ -52,5 +52,6 @@ class NaryFunc:
 
 Scheduling = Callable[[int], float]
 Rule = Callable[[NaryFunc, Vector, Vector], float]
+Condition = Callable[[NaryFunc, Vector, Vector, Vector], float]
 
-Learning = Scheduling | Rule
+Learning = Scheduling | Rule | Condition

@@ -45,11 +45,6 @@ if __name__ == "__main__":
         print("  params =", t.params)
         print()
 
-    fig = optuna.visualization.plot_pareto_front(
-        study,
-        target_names=["grad_count", "steps", "f_value"]
-    )
-    show(fig)
     # # По желанию можно сохранить результаты:
     #
     # print("\nRe-running newton_descent with best params...")

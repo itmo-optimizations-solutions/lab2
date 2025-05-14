@@ -2,7 +2,7 @@ from nary import *
 from scipy.optimize import minimize
 from typing import Tuple
 
-def newton_cg(func: NaryFunc, start: Vector) -> Tuple[Vector, int, int]:
+def newton_cg(func: NaryFunc, start: Vector) -> Tuple[Vector, int, int, int]:
     res = minimize(
         fun=func,
         x0=start,
@@ -11,9 +11,9 @@ def newton_cg(func: NaryFunc, start: Vector) -> Tuple[Vector, int, int]:
         hess=lambda x: func.hessian(x),
         options={'maxiter': 1000, 'xtol': 1e-6},
     )
-    return res.x, func.g_count, res.nit
+    return res.x, func.g_count, func.h_count, res.nit
 
-def bfgs(func: NaryFunc, start: Vector) -> Tuple[Vector, int, int]:
+def bfgs(func: NaryFunc, start: Vector) -> Tuple[Vector, int, int, int]:
     res = minimize(
         fun=func,
         x0=start,
@@ -21,4 +21,4 @@ def bfgs(func: NaryFunc, start: Vector) -> Tuple[Vector, int, int]:
         jac=lambda x: func.gradient(x),
         options={'maxiter': 1000, 'gtol': 1e-6},
     )
-    return res.x, func.g_count, res.nit
+    return res.x, func.g_count, func.h_count, res.nit
