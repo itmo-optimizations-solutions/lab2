@@ -1,5 +1,4 @@
 import scipy.optimize._linesearch as sc
-from scipy import *
 import numpy.linalg as ln
 
 from dataclasses import dataclass
@@ -17,13 +16,13 @@ def is_condition(algorithm) -> bool:
     return hasattr(algorithm, "__code__") and algorithm.__code__.co_argcount == 4
 
 def get_a_by_learning(
-        learning: Learning,
-        func: NaryFunc,
-        x: Vector,
-        d: Vector,
-        gradient: Vector,
-        k: int,
-        error: float
+    learning: Learning,
+    func: NaryFunc,
+    x: Vector,
+    d: Vector,
+    gradient: Vector,
+    k: int,
+    error: float
 ) -> float:
     if is_scheduling(learning):
         α = learning(k)
@@ -33,17 +32,16 @@ def get_a_by_learning(
         α = learning(func, x, d)
     return error if α is None else α
 
-Descent = Callable[[NaryFunc, Vector, Learning], Tuple[Vector, int, int, int, list]]
 def newton_descent(
-        func: NaryFunc,
-        start: Vector,
-        learning: Learning,
-        limit: float = 1e3,
-        ε: float = 1e-6,
-        c: float = 1e-4,  # параметр Армихо
-        τ: float = 0.5,  # редукция шага
-        μ: float = 1e-6,  # простая регуляризация diag(H)+μI
-        error: float = 0.1,
+    func: NaryFunc,
+    start: Vector,
+    learning: Learning,
+    limit: float = 1e3,
+    ε: float = 1e-6,
+    c: float = 1e-4,  # параметр Армихо
+    τ: float = 0.5,  # редукция шага
+    μ: float = 1e-6,  # простая регуляризация diag(H)+μI
+    error: float = 0.1,
 ) -> Tuple[Vector, int, int, int, list]:
     x = start.copy()
     trajectory = [x.copy()]
@@ -61,8 +59,6 @@ def newton_descent(
             d = -gradient
 
         α = get_a_by_learning(learning, func, x, d, gradient, k, error)
-
-        # шаг
         x += α * d
 
         trajectory.append(x.copy())
@@ -77,12 +73,12 @@ def newton_descent(
     return x, grad_count, hes_count, k, trajectory
 
 def bfgs_descent(
-        f: NaryFunc,
-        start: Vector,
-        learning: Learning,
-        limit: float = 1e3,
-        eps: float = 1e-6,
-        error: float = 0.1,
+    f: NaryFunc,
+    start: Vector,
+    learning: Learning,
+    limit: float = 1e3,
+    eps: float = 1e-6,
+    error: float = 0.1,
 ) -> Tuple[Vector, int, int, int, list]:
     k = 0
     gradient = f.gradient(start)
@@ -107,8 +103,6 @@ def bfgs_descent(
         k += 1
         x = next_x
         gradient = next_gradient
-        # сложный мат фомрула... ыыы
-        # *звук стикание слюны изо рта*
         ro = 1.0 / (np.dot(delta_gradient, delta_x))
         A1 = I - ro * delta_x[:, np.newaxis] * delta_gradient[np.newaxis, :]
         A2 = I - ro * delta_gradient[:, np.newaxis] * delta_x[np.newaxis, :]
@@ -141,13 +135,13 @@ def polynomial_decay(α: float, β: float) -> Scheduling:
 MAX_ITER_RULE = 80
 
 def armijo_rule(
-        func: NaryFunc,
-        x: Vector,
-        direction: Vector,
-        gradient: Vector,
-        α: float,
-        q: float,
-        c: float,
+    func: NaryFunc,
+    x: Vector,
+    direction: Vector,
+    gradient: Vector,
+    α: float,
+    q: float,
+    c: float,
 ) -> float | None:
     for _ in range(MAX_ITER_RULE):
         if func(x + α * direction) <= func(x) + c * α * np.dot(gradient, direction):
@@ -156,13 +150,13 @@ def armijo_rule(
     return None
 
 def wolfe_rule(
-        func: NaryFunc,
-        x: Vector,
-        direction: Vector,
-        gradient: Vector,
-        α: float,
-        c1: float,
-        c2: float,
+    func: NaryFunc,
+    x: Vector,
+    direction: Vector,
+    gradient: Vector,
+    α: float,
+    c1: float,
+    c2: float,
 ) -> float | None:
     for _ in range(MAX_ITER_RULE):
         if func(x + α * direction) > func(x) + c1 * α * np.dot(gradient, direction):
@@ -193,12 +187,12 @@ def dichotomy_gen(a: float, b: float, eps: float = 1e-6) -> Rule:
     return lambda func, x, direction: dichotomy(func, x, direction, a=a, b=b, eps=eps)
 
 def dichotomy(
-        func: NaryFunc,
-        x: np.ndarray,
-        direction: np.ndarray,
-        a: float,
-        b: float,
-        eps: float
+    func: NaryFunc,
+    x: np.ndarray,
+    direction: np.ndarray,
+    a: float,
+    b: float,
+    eps: float
 ) -> float:
     def phi(alpha: float) -> float:
         return func(x + alpha * direction)
@@ -229,7 +223,7 @@ class Algorithm:
     meta: str
     algorithm: Learning
 
-    def get_data(self, func: NaryFunc, start: Vector, descent : Descent) -> list:
+    def get_data(self, func: NaryFunc, start: Vector, descent: Descent) -> list:
         x, grad_count, hes_count, k, _ = descent(func, start, self.algorithm)
         return [self.name] + [self.meta] + list(x) + [grad_count] + [hes_count] + [k]
 
@@ -239,7 +233,7 @@ class SciAlgorithm:
     meta: str
     evaluator: Callable[[NaryFunc, Vector], Tuple[Vector, int, int, int]]
 
-    def get_data(self, func: NaryFunc, start: Vector, _ : Descent) -> list:
+    def get_data(self, func: NaryFunc, start: Vector, _: Descent) -> list:
         x, grad_count, h_count, k = self.evaluator(func, start)
         return [self.name] + [self.meta] + list(x) + [grad_count] + [h_count] + [k]
 
@@ -257,15 +251,15 @@ KNOWN = [
     SciAlgorithm("SciPy BFGS", "!", lambda f, x: bfgs(f, x)),
 ]
 
-def example_table(func: NaryFunc, start: Vector, descent : Descent) -> PrettyTable:
+def example_table(func: NaryFunc, start: Vector, descent: Descent) -> PrettyTable:
     table = PrettyTable()
     table.field_names = (
-            ["Method"]
-            + ["Params"]
-            + ["x" + str(i + 1) for i in range(len(start))]
-            + ["Gradient count"]
-            + ["Hessian count"]
-            + ["Steps"]
+        ["Method"]
+        + ["Params"]
+        + ["x" + str(i + 1) for i in range(len(start))]
+        + ["Gradient count"]
+        + ["Hessian count"]
+        + ["Steps"]
     )
     table.add_rows(
         sorted(
@@ -294,10 +288,10 @@ def random_noise(x: float, y: float, amplitude: float = 0.1) -> float:
     return amplitude * np.random.randn()
 
 def noisy_function(
-        x: float,
-        y: float,
-        amplitude: float,
-        function: Callable[[float, float], float]
+    x: float,
+    y: float,
+    amplitude: float,
+    function: Callable[[float, float], float]
 ) -> float:
     return function(x, y) + random_noise(x, y, amplitude)
 
@@ -310,21 +304,12 @@ INTERESTING = [
     [himmelblau, [1.0, 1.0], "Himmelblau function: (x^2 + y - 11)^2 + (x + y^2 - 7)^2"],
 ]
 
-# lambda x: x ** 3 + x ** 2, -2/3
-# lambda x, y: x ** 3 + x ** 2 + y ** 3 + y ** 2, (-2/3, -2/3)
-
 if __name__ == "__main__":
     descent = newton_descent
     func = NaryFunc(himmelblau)
     start = np.array([3.0, 3.0])
     print(example_table(func, start, descent))
-
-    x, _, _, _, trajectory = descent(
-        func, start, wolfe_rule_gen(α=0.5, c1=1e-4, c2=0.3)
-    )
-    plot_gradient(
-        func, len(start) == 1, len(start) == 2, trajectory, name="Himmelblau Function"
-    )
+    x, _, _, _, trajectory = descent(func, start, wolfe_rule_gen(α=0.5, c1=1e-4, c2=0.3))
+    plot_gradient(func, len(start) == 1, len(start) == 2, trajectory, name="Himmelblau Function")
     print(x)
-
     print(descent(func, start, wolfe_rule_gen(α=0.5, c1=1e-4, c2=0.3))[:4])

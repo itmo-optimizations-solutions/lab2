@@ -1,38 +1,16 @@
-import numpy as np
 import optuna
-from numpy import ndarray
-from optuna.trial import FrozenTrial
-
-from plotly.io import show
-from plot import *
-from main import (
-    newton_descent,
-    constant,
-    exponential_decay,
-    polynomial_decay,
-    armijo_rule_gen,
-    wolfe_rule_gen,
-    scipy_armijo,
-    scipy_wolfe,
-    dichotomy_gen,
-    NaryFunc,
-    rosenbrock,
-)
+from main import *
 
 X0 = np.array([0.0, 5.0])
 FUNC = NaryFunc(rosenbrock)
 
 def objective(trial: optuna.Trial) -> tuple[float, int, int]:
-
     α0 = trial.suggest_uniform("armijo_alpha", 1e-6, 1.0)
-    q  = trial.suggest_uniform("armijo_q",    1e-6, 0.9)
-    c  = trial.suggest_loguniform("armijo_c", 1e-6, 0.5)
+    q = trial.suggest_uniform("armijo_q", 1e-6, 0.9)
+    c = trial.suggest_loguniform("armijo_c", 1e-6, 0.5)
     learning = armijo_rule_gen(α0, q, c)
 
-    res, grad_count, steps, _ = newton_descent(
-        FUNC, X0, learning
-    )
-
+    res, grad_count, steps, _, _ = newton_descent(FUNC, X0, learning)
     return FUNC(res), grad_count, steps
 
 if __name__ == "__main__":
@@ -45,7 +23,7 @@ if __name__ == "__main__":
         print("  params =", t.params)
         print()
 
-    # # По желанию можно сохранить результаты:
+    # # По желанию – можно сохранить результаты:
     #
     # print("\nRe-running newton_descent with best params...")
     #
