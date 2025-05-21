@@ -1,5 +1,4 @@
 import scipy.optimize._linesearch as sc
-from scipy import *
 import numpy.linalg as ln
 
 from dataclasses import dataclass
@@ -40,9 +39,6 @@ def newton_descent(
         learning: Learning,
         limit: float = 1e3,
         ε: float = 1e-6,
-        c: float = 1e-4,  # параметр Армихо
-        τ: float = 0.5,  # редукция шага
-        μ: float = 1e-6,  # простая регуляризация diag(H)+μI
         error: float = 0.1,
 ) -> Tuple[Vector, int, int, int, list]:
     x = start.copy()
@@ -62,7 +58,6 @@ def newton_descent(
 
         α = get_a_by_learning(learning, func, x, d, gradient, k, error)
 
-        # шаг
         x += α * d
 
         trajectory.append(x.copy())
@@ -87,7 +82,7 @@ def bfgs_descent(
     k = 0
     gradient = f.gradient(start)
     N = len(start)
-    I = np.eye(N, dtype=int)  # single matrix
+    I = np.eye(N, dtype=int)
     Hk = I
     x = start.copy()
     trajectory = [x.copy()]
@@ -107,8 +102,6 @@ def bfgs_descent(
         k += 1
         x = next_x
         gradient = next_gradient
-        # сложный мат фомрула... ыыы
-        # *звук стикание слюны изо рта*
         ro = 1.0 / (np.dot(delta_gradient, delta_x))
         A1 = I - ro * delta_x[:, np.newaxis] * delta_gradient[np.newaxis, :]
         A2 = I - ro * delta_gradient[:, np.newaxis] * delta_x[np.newaxis, :]
