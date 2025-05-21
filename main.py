@@ -38,9 +38,6 @@ def newton_descent(
     learning: Learning,
     limit: float = 1e3,
     ε: float = 1e-6,
-    c: float = 1e-4,  # параметр Армихо
-    τ: float = 0.5,  # редукция шага
-    μ: float = 1e-6,  # простая регуляризация diag(H)+μI
     error: float = 0.1,
 ) -> Tuple[Vector, int, int, int, list]:
     x = start.copy()
@@ -307,9 +304,14 @@ INTERESTING = [
 if __name__ == "__main__":
     descent = newton_descent
     func = NaryFunc(himmelblau)
-    start = np.array([3.0, 3.0])
+    start = np.array([0.0, 0.0])
+    rule = constant(0.3)
     print(example_table(func, start, descent))
-    x, _, _, _, trajectory = descent(func, start, wolfe_rule_gen(α=0.5, c1=1e-4, c2=0.3))
-    plot_gradient(func, len(start) == 1, len(start) == 2, trajectory, name="Himmelblau Function")
-    print(x)
-    print(descent(func, start, wolfe_rule_gen(α=0.5, c1=1e-4, c2=0.3))[:4])
+    x_min, g_count, h_count, steps, trajectory = descent(func, start, rule)
+    plot_gradient(func, len(start) == 1, len(start) == 2, trajectory, name="Rosenbrok Function")
+
+    print("Current rule: " + str(rule).split('.')[0].split()[1])
+    print("Optimal x: " + str(x_min))
+    print("Gradient count: " + str(g_count))
+    print("Hessian count: " + str(h_count))
+    print("Steps: " + str(steps))
