@@ -1,6 +1,5 @@
 from nary import *
 from scipy.optimize import minimize
-from typing import Tuple
 
 def newton_cg(func: NaryFunc, start: Vector) -> Tuple[Vector, int, int, int]:
     res = minimize(

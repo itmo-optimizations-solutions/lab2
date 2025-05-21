@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Callable
+from typing import Callable, Tuple
 
 Vector = np.ndarray
 SYSTEM_EPS = np.sqrt(np.finfo(float).eps)
@@ -55,3 +55,4 @@ Rule = Callable[[NaryFunc, Vector, Vector], float]
 Condition = Callable[[NaryFunc, Vector, Vector, Vector], float]
 
 Learning = Scheduling | Rule | Condition
+Descent = Callable[[NaryFunc, Vector, Learning], Tuple[Vector, int, int, int, list]]
