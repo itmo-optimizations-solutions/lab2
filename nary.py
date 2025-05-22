@@ -2,7 +2,8 @@ import numpy as np
 from typing import Callable, Tuple
 
 Vector = np.ndarray
-SYSTEM_EPS = np.sqrt(np.finfo(float).eps)
+# SYSTEM_EPS = np.sqrt(np.finfo(float).eps) # 1.5e-8
+SYSTEM_EPS = 1e-6
 
 class NaryFunc:
     Type = Callable[[list[Vector]], float]
