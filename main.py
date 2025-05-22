@@ -82,7 +82,7 @@ def newton_descent(
     return x, grad_count, hes_count, k, trajectory
 
 def bfgs_descent(
-    f: NaryFunc,
+    func: NaryFunc,
     start: Vector,
     learning: Learning,
     limit: float = 1e3,
@@ -90,7 +90,7 @@ def bfgs_descent(
     error: float = 0.1,
 ) -> Tuple[Vector, int, int, int, list]:
     k = 0
-    gradient = f.gradient(start)
+    gradient = func.gradient(start)
     N = len(start)
     I = np.eye(N, dtype=int)  # single matrix
     Hk = I
@@ -105,7 +105,7 @@ def bfgs_descent(
         next_x = x + alpha_k * d
         delta_x = next_x - x
 
-        next_gradient = f.gradient(next_x)
+        next_gradient = func.gradient(next_x)
         delta_gradient = next_gradient - gradient
 
         trajectory.append(x.copy())
@@ -244,6 +244,8 @@ class SciAlgorithm:
 
     def get_data(self, func: NaryFunc, start: Vector, _: Descent) -> list:
         x, grad_count, h_count, k = self.evaluator(func, start)
+        func.g_count = 0
+        func.h_count = 0
         return [self.name] + [self.meta] + list(x) + [grad_count] + [h_count] + [k]
 
 KNOWN = [
@@ -315,10 +317,15 @@ INTERESTING = [
 
 if __name__ == "__main__":
     descent = newton_descent
-    func = NaryFunc(himmelblau)
-    start = np.array([3.0, 3.0])
+    func = NaryFunc(quadratic)
+    start = np.array([1.0, 5.0])
+    rule = constant(1.0)
     print(example_table(func, start, descent))
-    x, _, _, _, trajectory = descent(func, start, wolfe_rule_gen(α=0.5, c1=1e-4, c2=0.3))
-    plot_gradient(func, len(start) == 1, len(start) == 2, trajectory, name="Himmelblau Function")
-    print(x)
-    print(descent(func, start, wolfe_rule_gen(α=0.5, c1=1e-4, c2=0.3))[:4])
+    x_min, g_count, h_count, steps, trajectory = descent(func, start, rule)
+    plot_gradient(func, len(start) == 1, len(start) == 2, trajectory, name="Rosenbroke Function")
+
+    print("Current rule: " + str(rule).split('.')[0].split()[1])
+    print("Optimal x: " + str(x_min))
+    print("Gradient count: " + str(g_count))
+    print("Hessian count: " + str(h_count))
+    print("Steps: " + str(steps))
