@@ -46,13 +46,25 @@ def newton_descent(
 
     while True:
         gradient = func.gradient(x)
+
+        if np.allclose(gradient, 0):
+            radius_area = ε ** 0.5
+            func_val = func(x)
+            for att in range(20):
+                random_multipliers = np.random.randint(-10, 11, x.shape) / 10.0
+                eps_array = radius_area * random_multipliers
+                if func(x + eps_array) < func_val:
+                    x += eps_array
+                    max_state = True
+                    gradient = func.gradient(x)
+                    break
+
         hessian = func.hessian(x)
         try:
             d = -np.linalg.solve(hessian, gradient)
+            if np.dot(gradient, d) >= 0:
+                d = -gradient
         except np.linalg.LinAlgError:
-            d = -gradient
-
-        if np.dot(gradient, d) >= 0:
             d = -gradient
 
         α = get_a_by_learning(learning, func, x, d, gradient, k, error)
@@ -70,7 +82,7 @@ def newton_descent(
     return x, grad_count, hes_count, k, trajectory
 
 def bfgs_descent(
-    func: NaryFunc,
+    f: NaryFunc,
     start: Vector,
     learning: Learning,
     limit: float = 1e3,
@@ -78,14 +90,14 @@ def bfgs_descent(
     error: float = 0.1,
 ) -> Tuple[Vector, int, int, int, list]:
     k = 0
-    gradient = func.gradient(start)
+    gradient = f.gradient(start)
     N = len(start)
     I = np.eye(N, dtype=int)  # single matrix
     Hk = I
     x = start.copy()
     trajectory = [x.copy()]
 
-    while ln.norm(gradient) > eps and k < limit:
+    while ln.norm(gradient) ** 2 > eps and k < limit:
         d = -np.dot(Hk, gradient)
 
         alpha_k = get_a_by_learning(learning, func, x, d, gradient, k, error)
@@ -93,7 +105,7 @@ def bfgs_descent(
         next_x = x + alpha_k * d
         delta_x = next_x - x
 
-        next_gradient = func.gradient(next_x)
+        next_gradient = f.gradient(next_x)
         delta_gradient = next_gradient - gradient
 
         trajectory.append(x.copy())
@@ -232,8 +244,6 @@ class SciAlgorithm:
 
     def get_data(self, func: NaryFunc, start: Vector, _: Descent) -> list:
         x, grad_count, h_count, k = self.evaluator(func, start)
-        func.g_count = 0
-        func.h_count = 0
         return [self.name] + [self.meta] + list(x) + [grad_count] + [h_count] + [k]
 
 KNOWN = [
@@ -245,7 +255,7 @@ KNOWN = [
     Algorithm("Wolfe Rule", "α=0.5, c1=1e-4, c2=0.3", wolfe_rule_gen(α=0.5, c1=1e-4, c2=0.3)),
     Algorithm("SciPy Armijo", "!", scipy_armijo),
     Algorithm("SciPy Wolfe", "!", scipy_wolfe),
-    Algorithm("Dichotomy", "a=0.0, b=1.0", dichotomy_gen(a=0.0, b=1.0)),
+    Algorithm("Dichotomy", "a=0.0, b=1.0, c=0.5", dichotomy_gen(a=0.0, b=1.0)),
     SciAlgorithm("SciPy Newton-CG", "!", lambda f, x: newton_cg(f, x)),
     SciAlgorithm("SciPy BFGS", "!", lambda f, x: bfgs(f, x)),
 ]
@@ -304,16 +314,11 @@ INTERESTING = [
 ]
 
 if __name__ == "__main__":
-    descent = bfgs_descent
-    func = NaryFunc(rosenbrock)
-    start = np.array([-1.0, 5.0])
-    rule = wolfe_rule_gen(α=0.5, c1=1e-4, c2=0.3)
+    descent = newton_descent
+    func = NaryFunc(himmelblau)
+    start = np.array([3.0, 3.0])
     print(example_table(func, start, descent))
-    x_min, g_count, h_count, steps, trajectory = descent(func, start, rule)
-    plot_gradient(func, len(start) == 1, len(start) == 2, trajectory, name="Rosenbroke Function")
-
-    print("Current rule: " + str(rule).split('.')[0].split()[1])
-    print("Optimal x: " + str(x_min))
-    print("Gradient count: " + str(g_count))
-    print("Hessian count: " + str(h_count))
-    print("Steps: " + str(steps))
+    x, _, _, _, trajectory = descent(func, start, wolfe_rule_gen(α=0.5, c1=1e-4, c2=0.3))
+    plot_gradient(func, len(start) == 1, len(start) == 2, trajectory, name="Himmelblau Function")
+    print(x)
+    print(descent(func, start, wolfe_rule_gen(α=0.5, c1=1e-4, c2=0.3))[:4])
