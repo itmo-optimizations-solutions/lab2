@@ -305,12 +305,12 @@ INTERESTING = [
 
 if __name__ == "__main__":
     descent = bfgs_descent
-    func = NaryFunc(himmelblau)
-    start = np.array([3.0, 3.0])
-    rule = constant(λ=1)
+    func = NaryFunc(rosenbrock)
+    start = np.array([-1.0, 5.0])
+    rule = wolfe_rule_gen(α=0.5, c1=1e-4, c2=0.3)
     print(example_table(func, start, descent))
     x_min, g_count, h_count, steps, trajectory = descent(func, start, rule)
-    plot_gradient(func, len(start) == 1, len(start) == 2, trajectory, name="Himmelblau Function")
+    plot_gradient(func, len(start) == 1, len(start) == 2, trajectory, name="Rosenbroke Function")
 
     print("Current rule: " + str(rule).split('.')[0].split()[1])
     print("Optimal x: " + str(x_min))

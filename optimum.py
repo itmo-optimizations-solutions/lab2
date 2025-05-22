@@ -1,16 +1,29 @@
 import optuna
 from main import *
 
-X0 = np.array([0.0, 5.0])
+X0 = np.array([-1.0, 5.0])
 FUNC = NaryFunc(rosenbrock)
+descent = bfgs_descent
 
 def objective(trial: optuna.Trial) -> tuple[float, int, int]:
-    α0 = trial.suggest_uniform("armijo_alpha", 1e-6, 1.0)
-    q = trial.suggest_uniform("armijo_q", 1e-6, 0.9)
-    c = trial.suggest_loguniform("armijo_c", 1e-6, 0.5)
-    learning = armijo_rule_gen(α0, q, c)
+    # a = trial.suggest_uniform("a", 1e-6, 1.0)
+    # q = trial.suggest_uniform("q", 1e-6, 0.9)
+    # c = trial.suggest_loguniform("c", 1e-6, 0.5)
+    # learning = armijo_rule_gen(a, q, c)
 
-    res, grad_count, steps, _, _ = newton_descent(FUNC, X0, learning)
+    # a = trial.suggest_uniform("a", 0, 1)
+    # b = trial.suggest_uniform("b", 0, 1)
+    # learning = dichotomy_gen(a, b)
+
+    # a = trial.suggest_uniform("a", 1e-6, 1.0)
+    # c1 = trial.suggest_uniform("c1", 1e-6, 1.0)
+    # c2 = trial.suggest_loguniform("c2", 1e-6, 1.0)
+    # learning = wolfe_rule_gen(a, c1, c2)
+
+    a = trial.suggest_uniform("a", 0.0, 10.0)
+    learning = constant(a)
+
+    res, grad_count, steps, _, _ = descent(FUNC, X0, learning)
     return FUNC(res), grad_count, steps
 
 if __name__ == "__main__":
@@ -21,22 +34,17 @@ if __name__ == "__main__":
         print(f"Trial #{t.number}")
         print("  values =", t.values)
         print("  params =", t.params)
+        # print("  Result = ", descent(FUNC, X0, armijo_rule_gen(
+        #     t.params["a"],
+        #     t.params["q"],
+        #     t.params["c"]))[:4])
+        # print("  Result = ", descent(FUNC, X0, dichotomy_gen(
+        #     t.params["a"],
+        #     t.params["b"]))[:4])
+        # print("  Result = ", descent(FUNC, X0, wolfe_rule_gen(
+        #     t.params["a"],
+        #     t.params["c1"],
+        #     t.params["c2"]))[:4])
+        print("  Result = ", descent(FUNC, X0, constant(
+            t.params["a"]))[:4])
         print()
-
-    # # По желанию – можно сохранить результаты:
-    #
-    # print("\nRe-running newton_descent with best params...")
-    #
-    # alpha0 = best_trial.params["armijo_alpha"]
-    # q = best_trial.params["armijo_q"]
-    # c = best_trial.params["armijo_c"]
-    # best_learning = armijo_rule_gen(α=0.999944970635587, q=0.08285586209188826, c=0.0007192571029004037)
-    #
-    # x_opt, grad_count, steps, trajectory = newton_descent(
-    #     FUNC, X0, best_learning
-    # )
-    #
-    # print(f"Optimal x: {x_opt}")
-    # print(f"Gradient calls: {grad_count}, Steps: {steps}")
-    #
-    # plot_gradient(FUNC, len(X0) == 1, len(X0) == 2, trajectory)
